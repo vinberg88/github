@@ -19,7 +19,7 @@
     "fastify": "^5.3.3",
     "fastify-plugin": "^5.0.1",
     "ioredis": "^5.7.0",
-    "zod": "^3.25.7"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "prisma": "^6.7.0",
