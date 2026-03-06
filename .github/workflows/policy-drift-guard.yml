@@ -1,0 +1,69 @@
+name: Policy Drift Guard
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 3 * * 1"
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/settings.yml"
+      - ".github/workflows/policy-drift-guard.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-main-protection:
+    name: Check branch protection drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare branch protection with expected baseline
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = 'main';
+
+            let protection;
+            try {
+              const response = await github.rest.repos.getBranchProtection({ owner, repo, branch });
+              protection = response.data;
+            } catch (error) {
+              core.warning(`Could not fetch branch protection for ${branch}: ${error.message}`);
+              core.notice('Skipping strict comparison. Ensure token permissions allow reading branch protection.');
+              return;
+            }
+
+            const expectedContexts = ['CI / validate'];
+            const actualContexts = protection?.required_status_checks?.contexts ?? [];
+            const missingContexts = expectedContexts.filter(c => !actualContexts.includes(c));
+
+            const expectedApprovals = 1;
+            const actualApprovals = protection?.required_pull_request_reviews?.required_approving_review_count ?? 0;
+
+            let driftCount = 0;
+
+            if (missingContexts.length > 0) {
+              driftCount++;
+              core.warning(`Missing required status checks on ${branch}: ${missingContexts.join(', ')}`);
+            }
+
+            if (actualApprovals < expectedApprovals) {
+              driftCount++;
+              core.warning(`Approvals too low on ${branch}: expected >= ${expectedApprovals}, got ${actualApprovals}`);
+            }
+
+            if (driftCount === 0) {
+              core.notice('No policy drift detected for main branch protection baseline.');
+              return;
+            }
+
+            if (process.env.STRICT_POLICY_GUARD === 'true') {
+              core.setFailed(`Policy drift detected (${driftCount} issue(s)).`);
+            } else {
+              core.notice(`Policy drift detected (${driftCount} issue(s)) but STRICT_POLICY_GUARD is not enabled.`);
+            }
+        env:
+          STRICT_POLICY_GUARD: ${{ vars.STRICT_POLICY_GUARD }}

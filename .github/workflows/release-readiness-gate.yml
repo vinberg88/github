@@ -1,0 +1,85 @@
+name: Release Readiness Gate
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-readiness:
+    name: Validate release readiness policy
+    if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce release-readiness rules
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
+
+            const matrix = JSON.parse(fs.readFileSync('.github/policy-matrix.json', 'utf8'));
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number,
+              per_page: 100
+            });
+
+            const changed = files.map(f => f.filename);
+            const userFacing = changed.some((path) =>
+              matrix.userFacingPathPrefixes.some((prefix) => path.startsWith(prefix)) ||
+              matrix.userFacingExactPaths.includes(path)
+            );
+            const issueLabel = matrix.policyNeedsAttentionLabel;
+
+            const violations = [];
+
+            if (userFacing && !matrix.changelogLabels.some((label) => labels.includes(label))) {
+              violations.push("Missing changelog decision label (`changelog:required` or `changelog:skip`).");
+            }
+
+            if (labels.includes(matrix.sizeXlLabel) && !labels.includes(matrix.riskAcceptedLabel)) {
+              violations.push("PR has `size/xl` but lacks `risk:accepted` label.");
+            }
+
+            if (violations.length === 0) {
+              if (labels.includes(issueLabel)) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: pull_number,
+                    name: issueLabel
+                  });
+                  core.notice(`Removed '${issueLabel}' label since policy now passes.`);
+                } catch (error) {
+                  core.notice(`Could not remove '${issueLabel}' label: ${error.message}`);
+                }
+              }
+
+              core.notice('Release readiness policy passed.');
+              return;
+            }
+
+            if (!labels.includes(issueLabel)) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pull_number,
+                labels: [issueLabel]
+              });
+            }
+
+            core.setFailed(`Release readiness failed: ${violations.join(' | ')}`);

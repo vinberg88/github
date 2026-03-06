@@ -1,0 +1,22 @@
+name: Deploy to Azure (Staging)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "apps/**"
+      - "infra/**"
+      - "azure.yaml"
+      - ".github/workflows/deploy-azure-staging.yml"
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_reusable-azure-deploy.yml
+    environment: staging
+    with:
+      environment-name: ${{ vars.AZURE_STAGING_ENV_NAME }}
+      location: ${{ vars.AZURE_STAGING_LOCATION }}
+      branch-ref: main
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}

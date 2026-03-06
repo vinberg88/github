@@ -1,0 +1,282 @@
+name: Policy Matrix Validate
+
+on:
+  pull_request:
+    paths:
+      - '.github/policy-matrix.json'
+      - '.github/workflows/**policy**.yml'
+      - '.github/workflows/policy-*.yml'
+      - '.github/workflows/*-policy.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/policy-matrix.json'
+      - '.github/workflows/**policy**.yml'
+      - '.github/workflows/policy-*.yml'
+      - '.github/workflows/*-policy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-policy-matrix:
+    name: Validate policy matrix structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JSON shape and semantics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+
+            const fail = (msg) => {
+              core.setFailed(msg);
+            };
+
+            const raw = fs.readFileSync('.github/policy-matrix.json', 'utf8');
+            let matrix;
+
+            try {
+              matrix = JSON.parse(raw);
+            } catch (e) {
+              fail(`Invalid JSON in .github/policy-matrix.json: ${e.message}`);
+              return;
+            }
+
+            const requiredStringKeys = [
+              'prTitlePattern',
+              'branchNamePattern',
+              'sizeXlLabel',
+              'riskAcceptedLabel',
+              'policyNeedsAttentionLabel'
+            ];
+
+            const requiredArrayKeys = [
+              'branchAllowedPrefixes',
+              'requiredPrSections',
+              'userFacingPathPrefixes',
+              'userFacingExactPaths',
+              'changelogLabels',
+              'requiredStatusChecks'
+            ];
+
+            const errors = [];
+
+            for (const key of requiredStringKeys) {
+              if (typeof matrix[key] !== 'string' || matrix[key].trim() === '') {
+                errors.push(`'${key}' must be a non-empty string.`);
+              }
+            }
+
+            for (const key of requiredArrayKeys) {
+              if (!Array.isArray(matrix[key]) || matrix[key].length === 0) {
+                errors.push(`'${key}' must be a non-empty array.`);
+                continue;
+              }
+
+              const invalidItem = matrix[key].find((v) => typeof v !== 'string' || v.trim() === '');
+              if (invalidItem !== undefined) {
+                errors.push(`'${key}' must only contain non-empty strings.`);
+              }
+            }
+
+            try {
+              // eslint-disable-next-line no-new
+              new RegExp(matrix.prTitlePattern);
+            } catch (e) {
+              errors.push(`'prTitlePattern' is not a valid regex: ${e.message}`);
+            }
+
+            try {
+              // eslint-disable-next-line no-new
+              new RegExp(matrix.branchNamePattern);
+            } catch (e) {
+              errors.push(`'branchNamePattern' is not a valid regex: ${e.message}`);
+            }
+
+            const labels = new Set([
+              ...(Array.isArray(matrix.changelogLabels) ? matrix.changelogLabels : []),
+              matrix.sizeXlLabel,
+              matrix.riskAcceptedLabel,
+              matrix.policyNeedsAttentionLabel
+            ]);
+
+            if (labels.size < 5) {
+              errors.push('Label fields should be distinct to avoid ambiguous policy behavior.');
+            }
+
+            if (Array.isArray(matrix.requiredStatusChecks)) {
+              const uniqueChecks = new Set(matrix.requiredStatusChecks);
+              if (uniqueChecks.size !== matrix.requiredStatusChecks.length) {
+                errors.push("'requiredStatusChecks' must not contain duplicates.");
+              }
+            }
+
+            if (!Array.isArray(matrix.managedLabels) || matrix.managedLabels.length === 0) {
+              errors.push("'managedLabels' must be a non-empty array.");
+            } else {
+              const seenNames = new Set();
+              for (const label of matrix.managedLabels) {
+                if (!label || typeof label !== 'object') {
+                  errors.push("Each item in 'managedLabels' must be an object.");
+                  continue;
+                }
+
+                const { name, color, description } = label;
+                if (typeof name !== 'string' || name.trim() === '') {
+                  errors.push("Each 'managedLabels' item must include a non-empty string 'name'.");
+                }
+
+                if (typeof color !== 'string' || !/^[0-9A-Fa-f]{6}$/.test(color)) {
+                  errors.push("Each 'managedLabels' item must include a 6-char hex 'color' without '#'.");
+                }
+
+                if (typeof description !== 'string' || description.trim() === '') {
+                  errors.push("Each 'managedLabels' item must include a non-empty string 'description'.");
+                }
+
+                if (typeof name === 'string') {
+                  if (seenNames.has(name)) {
+                    errors.push(`Duplicate managed label name found: '${name}'.`);
+                  }
+                  seenNames.add(name);
+                }
+              }
+            }
+
+            if (!matrix.governanceScore || typeof matrix.governanceScore !== 'object') {
+              errors.push("'governanceScore' must be an object.");
+            } else {
+              const weights = matrix.governanceScore.weights;
+              const trendWindow = matrix.governanceScore.trendWindow;
+
+              if (!weights || typeof weights !== 'object') {
+                errors.push("'governanceScore.weights' must be an object.");
+              } else {
+                const requiredWeightKeys = ['missingChecks', 'extraChecks', 'missingManagedLabels', 'labelMetadataDrift'];
+                for (const key of requiredWeightKeys) {
+                  const value = weights[key];
+                  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+                    errors.push(`'governanceScore.weights.${key}' must be a number between 0 and 100.`);
+                  }
+                }
+              }
+
+              if (typeof trendWindow !== 'number' || !Number.isInteger(trendWindow) || trendWindow < 3 || trendWindow > 30) {
+                errors.push("'governanceScore.trendWindow' must be an integer between 3 and 30.");
+              }
+            }
+
+            if (!matrix.governanceEscalation || typeof matrix.governanceEscalation !== 'object') {
+              errors.push("'governanceEscalation' must be an object.");
+            } else {
+              const critical = matrix.governanceEscalation.critical;
+              if (!critical || typeof critical !== 'object') {
+                errors.push("'governanceEscalation.critical' must be an object.");
+              } else {
+                if (typeof critical.enabled !== 'boolean') {
+                  errors.push("'governanceEscalation.critical.enabled' must be a boolean.");
+                }
+
+                if (!Array.isArray(critical.labels) || critical.labels.length === 0) {
+                  errors.push("'governanceEscalation.critical.labels' must be a non-empty array.");
+                } else {
+                  const invalidLabel = critical.labels.find((v) => typeof v !== 'string' || v.trim() === '');
+                  if (invalidLabel !== undefined) {
+                    errors.push("'governanceEscalation.critical.labels' must only contain non-empty strings.");
+                  }
+
+                  const uniqueEscalationLabels = new Set(critical.labels);
+                  if (uniqueEscalationLabels.size !== critical.labels.length) {
+                    errors.push("'governanceEscalation.critical.labels' must not contain duplicates.");
+                  }
+
+                  const managedLabelNames = new Set(
+                    (Array.isArray(matrix.managedLabels) ? matrix.managedLabels : [])
+                      .map((l) => l?.name)
+                      .filter((v) => typeof v === 'string' && v.trim() !== '')
+                  );
+
+                  for (const label of critical.labels) {
+                    if (!managedLabelNames.has(label)) {
+                      errors.push(`'governanceEscalation.critical.labels' references unknown managed label '${label}'.`);
+                    }
+                  }
+                }
+
+                if (!Array.isArray(critical.assignees)) {
+                  errors.push("'governanceEscalation.critical.assignees' must be an array.");
+                } else {
+                  const invalidAssignee = critical.assignees.find((v) => typeof v !== 'string' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37})$/.test(v));
+                  if (invalidAssignee !== undefined) {
+                    errors.push("'governanceEscalation.critical.assignees' must contain valid GitHub usernames (1-38 chars, alnum or '-').");
+                  }
+                }
+
+                if (typeof critical.autoCloseResolved !== 'boolean') {
+                  errors.push("'governanceEscalation.critical.autoCloseResolved' must be a boolean.");
+                }
+
+                if (typeof critical.slaDays !== 'number' || !Number.isInteger(critical.slaDays) || critical.slaDays < 1 || critical.slaDays > 90) {
+                  errors.push("'governanceEscalation.critical.slaDays' must be an integer between 1 and 90.");
+                }
+
+                if (!Array.isArray(critical.escalationLabels)) {
+                  errors.push("'governanceEscalation.critical.escalationLabels' must be an array.");
+                } else {
+                  const invalidEscLabel = critical.escalationLabels.find((v) => typeof v !== 'string' || v.trim() === '');
+                  if (invalidEscLabel !== undefined) {
+                    errors.push("'governanceEscalation.critical.escalationLabels' must only contain non-empty strings.");
+                  }
+
+                  const uniqueEscalationLabels = new Set(critical.escalationLabels);
+                  if (uniqueEscalationLabels.size !== critical.escalationLabels.length) {
+                    errors.push("'governanceEscalation.critical.escalationLabels' must not contain duplicates.");
+                  }
+
+                  const managedLabelNames = new Set(
+                    (Array.isArray(matrix.managedLabels) ? matrix.managedLabels : [])
+                      .map((l) => l?.name)
+                      .filter((v) => typeof v === 'string' && v.trim() !== '')
+                  );
+
+                  for (const label of critical.escalationLabels) {
+                    if (!managedLabelNames.has(label)) {
+                      errors.push(`'governanceEscalation.critical.escalationLabels' references unknown managed label '${label}'.`);
+                    }
+                  }
+                }
+
+                if (!Array.isArray(critical.escalationAssignees)) {
+                  errors.push("'governanceEscalation.critical.escalationAssignees' must be an array.");
+                } else {
+                  const invalidEscAssignee = critical.escalationAssignees.find((v) => typeof v !== 'string' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37})$/.test(v));
+                  if (invalidEscAssignee !== undefined) {
+                    errors.push("'governanceEscalation.critical.escalationAssignees' must contain valid GitHub usernames (1-38 chars, alnum or '-').");
+                  }
+                }
+
+                if (!Array.isArray(critical.escalationCommentMentions)) {
+                  errors.push("'governanceEscalation.critical.escalationCommentMentions' must be an array.");
+                } else {
+                  const invalidMention = critical.escalationCommentMentions.find((v) => typeof v !== 'string' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37})$/.test(v));
+                  if (invalidMention !== undefined) {
+                    errors.push("'governanceEscalation.critical.escalationCommentMentions' must contain valid GitHub usernames (1-38 chars, alnum or '-').");
+                  }
+                }
+
+                if (typeof critical.blockOnSlaBreach !== 'boolean') {
+                  errors.push("'governanceEscalation.critical.blockOnSlaBreach' must be a boolean.");
+                }
+              }
+            }
+
+            if (errors.length > 0) {
+              fail(`Policy matrix validation failed:\n- ${errors.join('\n- ')}`);
+              return;
+            }
+
+            core.notice('Policy matrix validation passed.');

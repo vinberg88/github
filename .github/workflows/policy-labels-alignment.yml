@@ -1,0 +1,112 @@
+name: Policy Labels Alignment
+
+on:
+  pull_request:
+    paths:
+      - '.github/policy-matrix.json'
+      - '.github/labels.yml'
+      - '.github/workflows/policy-labels-*.yml'
+      - '.github/workflows/policy-matrix-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/policy-matrix.json'
+      - '.github/labels.yml'
+      - '.github/workflows/policy-labels-*.yml'
+      - '.github/workflows/policy-matrix-validate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  label-alignment:
+    name: Validate policy labels alignment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate labels are synchronized with policy matrix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+
+            const matrix = JSON.parse(fs.readFileSync('.github/policy-matrix.json', 'utf8'));
+            const labelsRaw = fs.readFileSync('.github/labels.yml', 'utf8');
+
+            if (!Array.isArray(matrix.managedLabels) || matrix.managedLabels.length === 0) {
+              core.setFailed("policy-matrix.json must define a non-empty 'managedLabels' array.");
+              return;
+            }
+
+            const parseBlocks = (raw) => {
+              const chunks = raw.trim().split(/\n(?=-\s*name:\s*)/g).filter(Boolean);
+              return chunks.map((chunk) => {
+                const nameMatch = chunk.match(/^-\s*name:\s*"?(.+?)"?\s*$/m);
+                const colorMatch = chunk.match(/^\s*color:\s*"?([0-9A-Fa-f]{6}|.+?)"?\s*$/m);
+                const descriptionMatch = chunk.match(/^\s*description:\s*"?(.+?)"?\s*$/m);
+                return {
+                  name: nameMatch ? nameMatch[1] : null,
+                  color: colorMatch ? colorMatch[1] : null,
+                  description: descriptionMatch ? descriptionMatch[1] : null
+                };
+              });
+            };
+
+            const parsedLabels = parseBlocks(labelsRaw).filter((l) => typeof l.name === 'string' && l.name.length > 0);
+            const labelsByName = new Map();
+            const duplicateInLabels = [];
+            for (const label of parsedLabels) {
+              if (labelsByName.has(label.name)) {
+                duplicateInLabels.push(label.name);
+              }
+              labelsByName.set(label.name, label);
+            }
+
+            const policyByName = new Map();
+            const duplicateInPolicy = [];
+            for (const label of matrix.managedLabels) {
+              if (policyByName.has(label.name)) {
+                duplicateInPolicy.push(label.name);
+              }
+              policyByName.set(label.name, label);
+            }
+
+            const policyLabelNames = [...policyByName.keys()];
+            const missingInLabels = policyLabelNames.filter((name) => !labelsByName.has(name));
+
+            const metadataDrift = [];
+            for (const [name, policyLabel] of policyByName.entries()) {
+              if (!labelsByName.has(name)) {
+                continue;
+              }
+              const repoLabel = labelsByName.get(name);
+              if ((repoLabel.color || '').toUpperCase() !== String(policyLabel.color || '').toUpperCase()) {
+                metadataDrift.push(`${name}: color ${repoLabel.color} -> ${policyLabel.color}`);
+              }
+              if ((repoLabel.description || '') !== String(policyLabel.description || '')) {
+                metadataDrift.push(`${name}: description drift`);
+              }
+            }
+
+            if (missingInLabels.length > 0 || duplicateInPolicy.length > 0 || duplicateInLabels.length > 0 || metadataDrift.length > 0) {
+              const parts = [];
+              if (missingInLabels.length > 0) {
+                parts.push(`missing in labels.yml: ${missingInLabels.join(', ')}`);
+              }
+              if (duplicateInPolicy.length > 0) {
+                parts.push(`duplicate in matrix managedLabels: ${[...new Set(duplicateInPolicy)].join(', ')}`);
+              }
+              if (duplicateInLabels.length > 0) {
+                parts.push(`duplicate in labels.yml: ${[...new Set(duplicateInLabels)].join(', ')}`);
+              }
+              if (metadataDrift.length > 0) {
+                parts.push(`metadata drift: ${metadataDrift.join(', ')}`);
+              }
+
+              core.setFailed(`Label policy alignment failed (${parts.join(' | ')})`);
+              return;
+            }
+
+            core.notice('Policy matrix managed labels are aligned with labels.yml.');

@@ -1,0 +1,15 @@
+name: Deploy to Azure (Production)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_reusable-azure-deploy.yml
+    environment: production
+    with:
+      environment-name: ${{ vars.AZURE_ENV_NAME }}
+      location: ${{ vars.AZURE_LOCATION }}
+      branch-ref: main
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}

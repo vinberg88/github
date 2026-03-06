@@ -1,0 +1,550 @@
+name: Policy Governance Report
+
+on:
+  schedule:
+    - cron: '50 4 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/policy-matrix.json'
+      - '.github/settings.yml'
+      - '.github/labels.yml'
+      - '.github/workflows/policy-*.yml'
+      - '.github/workflows/*policy*.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  report:
+    name: Build governance status report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate and upsert governance report issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const matrix = JSON.parse(fs.readFileSync('.github/policy-matrix.json', 'utf8'));
+            const settingsRaw = fs.readFileSync('.github/settings.yml', 'utf8');
+            const labelsRaw = fs.readFileSync('.github/labels.yml', 'utf8');
+
+            const marker = '<!-- policy-governance-report -->';
+            const criticalMarkerPrefix = '<!-- policy-governance-critical:';
+            const criticalSlaEscalationMarker = '<!-- policy-governance-critical-sla-escalated -->';
+            const scoreMarkerPrefix = '<!-- policy-governance-score:';
+            const historyMarkerPrefix = '<!-- policy-governance-history:';
+            const title = 'Policy Governance Report';
+
+            const contextRegex = /^\s*-\s*"([^"]+)"\s*$/gm;
+            const settingsContexts = [...settingsRaw.matchAll(contextRegex)].map(m => m[1]);
+            const expectedChecks = Array.isArray(matrix.requiredStatusChecks) ? matrix.requiredStatusChecks : [];
+            const missingChecks = expectedChecks.filter((c) => !settingsContexts.includes(c));
+            const extraChecks = settingsContexts.filter((c) => !expectedChecks.includes(c));
+
+            const labelChunks = labelsRaw.trim().split(/\n(?=-\s*name:\s*)/g).filter(Boolean);
+            const parseLabel = (chunk) => {
+              const nameMatch = chunk.match(/^-\s*name:\s*"?(.+?)"?\s*$/m);
+              const colorMatch = chunk.match(/^\s*color:\s*"?([0-9A-Fa-f]{6}|.+?)"?\s*$/m);
+              const descriptionMatch = chunk.match(/^\s*description:\s*"?(.+?)"?\s*$/m);
+              return {
+                name: nameMatch ? nameMatch[1] : null,
+                color: colorMatch ? colorMatch[1] : null,
+                description: descriptionMatch ? descriptionMatch[1] : null
+              };
+            };
+
+            const parsedLabels = labelChunks.map(parseLabel).filter(l => l.name);
+            const labelsByName = new Map(parsedLabels.map((l) => [l.name, l]));
+            const availableLabelNames = new Set(parsedLabels.map((l) => l.name));
+            const managed = Array.isArray(matrix.managedLabels) ? matrix.managedLabels : [];
+            const missingManagedLabels = managed.filter((l) => !labelsByName.has(l.name)).map((l) => l.name);
+
+            const criticalEscalation = matrix.governanceEscalation?.critical || {};
+            const criticalEscalationEnabled = criticalEscalation.enabled !== false;
+            const criticalEscalationAutoClose = criticalEscalation.autoCloseResolved !== false;
+            const criticalSlaDays = Number.isInteger(criticalEscalation.slaDays) ? criticalEscalation.slaDays : 7;
+            const criticalBlockOnSlaBreach = criticalEscalation.blockOnSlaBreach !== false;
+            const criticalEscalationLabels = [
+              ...new Set(
+                (Array.isArray(criticalEscalation.labels)
+                  ? criticalEscalation.labels
+                  : [matrix.policyNeedsAttentionLabel, 'workflows'])
+                  .map((s) => String(s || '').trim())
+                  .filter((s) => s && availableLabelNames.has(s))
+              )
+            ];
+            const criticalEscalationAssignees = [
+              ...new Set(
+                (Array.isArray(criticalEscalation.assignees) ? criticalEscalation.assignees : [])
+                  .map((s) => String(s || '').trim())
+                  .filter(Boolean)
+              )
+            ];
+            const criticalSlaEscalationLabels = [
+              ...new Set(
+                (Array.isArray(criticalEscalation.escalationLabels) ? criticalEscalation.escalationLabels : [])
+                  .map((s) => String(s || '').trim())
+                  .filter((s) => s && availableLabelNames.has(s))
+              )
+            ];
+            const criticalSlaEscalationAssignees = [
+              ...new Set(
+                (Array.isArray(criticalEscalation.escalationAssignees) ? criticalEscalation.escalationAssignees : [])
+                  .map((s) => String(s || '').trim())
+                  .filter(Boolean)
+              )
+            ];
+            const criticalSlaEscalationMentions = [
+              ...new Set(
+                (Array.isArray(criticalEscalation.escalationCommentMentions) ? criticalEscalation.escalationCommentMentions : [])
+                  .map((s) => String(s || '').trim())
+                  .filter(Boolean)
+              )
+            ];
+
+            const metadataDrift = [];
+            for (const policyLabel of managed) {
+              if (!labelsByName.has(policyLabel.name)) continue;
+              const current = labelsByName.get(policyLabel.name);
+              if ((String(current.color || '').toUpperCase()) !== String(policyLabel.color || '').toUpperCase()) {
+                metadataDrift.push(`${policyLabel.name} (color)`);
+              }
+              if (String(current.description || '') !== String(policyLabel.description || '')) {
+                metadataDrift.push(`${policyLabel.name} (description)`);
+              }
+            }
+
+            const weights = matrix.governanceScore?.weights || {
+              missingChecks: 12,
+              extraChecks: 8,
+              missingManagedLabels: 10,
+              labelMetadataDrift: 4
+            };
+            const trendWindow = Number.isInteger(matrix.governanceScore?.trendWindow)
+              ? matrix.governanceScore.trendWindow
+              : 10;
+
+            const penalty =
+              missingChecks.length * Number(weights.missingChecks ?? 12) +
+              extraChecks.length * Number(weights.extraChecks ?? 8) +
+              missingManagedLabels.length * Number(weights.missingManagedLabels ?? 10) +
+              metadataDrift.length * Number(weights.labelMetadataDrift ?? 4);
+
+            const score = Math.max(0, Math.min(100, 100 - penalty));
+            const grade = score >= 95 ? 'A' : score >= 85 ? 'B' : score >= 70 ? 'C' : score >= 50 ? 'D' : 'F';
+
+            const overall = (
+              missingChecks.length === 0 &&
+              extraChecks.length === 0 &&
+              missingManagedLabels.length === 0 &&
+              metadataDrift.length === 0
+            ) ? '✅ Healthy' : '⚠️ Attention needed';
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = openIssues.find((i) => i.title === title || (typeof i.body === 'string' && i.body.includes(marker)));
+
+            const existingBody = typeof existing?.body === 'string' ? existing.body : '';
+            const previousScoreMatch = existingBody.match(/<!--\s*policy-governance-score:(\d+)\s*-->/);
+            const previousScore = previousScoreMatch ? Number(previousScoreMatch[1]) : null;
+
+            const historyMatch = existingBody.match(/<!--\s*policy-governance-history:([\s\S]*?)\s*-->/);
+            let history = [];
+            if (historyMatch) {
+              try {
+                const parsed = JSON.parse(historyMatch[1]);
+                if (Array.isArray(parsed)) {
+                  history = parsed.filter((h) => h && typeof h.score === 'number' && typeof h.ts === 'string');
+                }
+              } catch {
+                history = [];
+              }
+            }
+
+            const now = new Date().toISOString();
+            const nowDate = new Date(now);
+            history.push({ ts: now, score });
+            history = history.slice(-trendWindow);
+
+            const trend = previousScore === null
+              ? 'N/A (first run)'
+              : score > previousScore
+                ? `↗ +${score - previousScore}`
+                : score < previousScore
+                  ? `↘ -${previousScore - score}`
+                  : '→ 0';
+
+            const trendRows = history
+              .map((h) => `| ${h.ts} | ${h.score} |`)
+              .join('\n');
+
+            const deviations = [];
+
+            for (const check of missingChecks) {
+              deviations.push({
+                type: 'missing-check',
+                item: check,
+                severity: 'critical',
+                recommendation: `Add required check '${check}' to .github/settings.yml contexts (or update requiredStatusChecks in policy matrix).`
+              });
+            }
+
+            for (const check of extraChecks) {
+              deviations.push({
+                type: 'extra-check',
+                item: check,
+                severity: 'high',
+                recommendation: `Remove extra check '${check}' from .github/settings.yml or register it in requiredStatusChecks.`
+              });
+            }
+
+            for (const label of missingManagedLabels) {
+              deviations.push({
+                type: 'missing-managed-label',
+                item: label,
+                severity: 'high',
+                recommendation: `Sync '${label}' into .github/labels.yml via policy-labels-autosync workflow or manual label sync.`
+              });
+            }
+
+            for (const drift of metadataDrift) {
+              deviations.push({
+                type: 'label-metadata-drift',
+                item: drift,
+                severity: 'medium',
+                recommendation: `Run policy-labels-autosync to normalize color/description drift for '${drift}'.`
+              });
+            }
+
+            const severityWeight = {
+              critical: 4,
+              high: 3,
+              medium: 2,
+              low: 1
+            };
+
+            const grouped = {
+              critical: 0,
+              high: 0,
+              medium: 0,
+              low: 0
+            };
+
+            for (const d of deviations) {
+              grouped[d.severity] = (grouped[d.severity] || 0) + 1;
+            }
+
+            const prioritized = [...deviations]
+              .sort((a, b) => (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0))
+              .slice(0, 3);
+
+            const criticalDeviations = deviations.filter((d) => d.severity === 'critical');
+            const criticalDeviationIds = new Set(
+              criticalDeviations.map((d) => encodeURIComponent(`${d.type}:${d.item}`))
+            );
+            const managedCriticalIssues = openIssues.filter((i) => {
+              if (i.pull_request) return false;
+              return typeof i.body === 'string' && i.body.includes(criticalMarkerPrefix);
+            });
+
+            let criticalCreated = 0;
+            let criticalUpdated = 0;
+            let criticalClosed = 0;
+            let criticalSkipped = 0;
+            let criticalSlaBreached = 0;
+            let criticalSlaEscalatedLabels = 0;
+            let criticalSlaEscalatedAssignees = 0;
+            let criticalSlaEscalationComments = 0;
+            let criticalSlaEscalationSkipped = 0;
+            const criticalSlaBreachedRows = [];
+
+            if (criticalEscalationEnabled) {
+              for (const d of criticalDeviations) {
+                const criticalId = encodeURIComponent(`${d.type}:${d.item}`);
+                const issueMarker = `${criticalMarkerPrefix}${criticalId} -->`;
+                const criticalTitle = `🚨 Policy Critical: ${d.item}`;
+                const criticalBody = `${issueMarker}\n# Critical policy deviation\n\n- **Severity:** ${d.severity.toUpperCase()}\n- **Type:** ${d.type}\n- **Item:** ${d.item}\n- **Recommendation:** ${d.recommendation}\n- **Detected at:** ${now}\n\nThis issue is managed by \`policy-governance-report.yml\` and will be auto-closed when the deviation is resolved.`;
+
+                const existingCritical = managedCriticalIssues.find((i) => {
+                  return typeof i.body === 'string' && i.body.includes(issueMarker);
+                });
+
+                if (existingCritical) {
+                  await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: existingCritical.number,
+                    title: criticalTitle,
+                    body: criticalBody,
+                    labels: criticalEscalationLabels
+                  });
+                  criticalUpdated += 1;
+                  continue;
+                }
+
+                try {
+                  await github.rest.issues.create({
+                    owner,
+                    repo,
+                    title: criticalTitle,
+                    body: criticalBody,
+                    labels: criticalEscalationLabels,
+                    assignees: criticalEscalationAssignees
+                  });
+                } catch (e) {
+                  if (criticalEscalationAssignees.length > 0) {
+                    await github.rest.issues.create({
+                      owner,
+                      repo,
+                      title: criticalTitle,
+                      body: criticalBody,
+                      labels: criticalEscalationLabels
+                    });
+                  } else {
+                    throw e;
+                  }
+                }
+
+                criticalCreated += 1;
+              }
+
+              if (criticalEscalationAutoClose) {
+                for (const issue of managedCriticalIssues) {
+                  const match = String(issue.body || '').match(/<!--\s*policy-governance-critical:([^\s]+)\s*-->/);
+                  const deviationId = match ? match[1] : null;
+                  if (!deviationId || criticalDeviationIds.has(deviationId)) {
+                    continue;
+                  }
+
+                  await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    body: `Resolved by current governance scan at ${now}. Closing automatically.`
+                  });
+
+                  await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    state: 'closed'
+                  });
+
+                  criticalClosed += 1;
+                }
+              }
+            } else {
+              criticalSkipped = criticalDeviations.length;
+            }
+
+            const refreshedOpenIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const activeManagedCriticalIssues = refreshedOpenIssues.filter((i) => {
+              if (i.pull_request) return false;
+              return typeof i.body === 'string' && i.body.includes(criticalMarkerPrefix);
+            });
+
+            if (criticalEscalationEnabled) {
+              for (const issue of activeManagedCriticalIssues) {
+                const match = String(issue.body || '').match(/<!--\s*policy-governance-critical:([^\s]+)\s*-->/);
+                const deviationId = match ? decodeURIComponent(match[1]) : null;
+                if (!deviationId || !criticalDeviations.some((d) => `${d.type}:${d.item}` === deviationId)) {
+                  continue;
+                }
+
+                const createdAt = issue.created_at ? new Date(issue.created_at) : nowDate;
+                const ageDays = Math.max(0, Math.floor((nowDate.getTime() - createdAt.getTime()) / (24 * 60 * 60 * 1000)));
+                if (ageDays < criticalSlaDays) {
+                  continue;
+                }
+
+                criticalSlaBreached += 1;
+                criticalSlaBreachedRows.push(`| #${issue.number} | ${deviationId} | ${ageDays} |`);
+
+                const currentLabels = (issue.labels || []).map((l) => typeof l === 'string' ? l : l.name).filter(Boolean);
+                const desiredLabels = [...new Set([...currentLabels, ...criticalSlaEscalationLabels])];
+
+                if (desiredLabels.length > currentLabels.length) {
+                  await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    labels: desiredLabels
+                  });
+                  criticalSlaEscalatedLabels += 1;
+                }
+
+                if (criticalSlaEscalationAssignees.length > 0) {
+                  try {
+                    await github.rest.issues.addAssignees({
+                      owner,
+                      repo,
+                      issue_number: issue.number,
+                      assignees: criticalSlaEscalationAssignees
+                    });
+                    criticalSlaEscalatedAssignees += 1;
+                  } catch {
+                    // no-op; assignee escalation is best-effort
+                  }
+                }
+
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  per_page: 100
+                });
+
+                const alreadyEscalated = comments.some((c) => typeof c.body === 'string' && c.body.includes(criticalSlaEscalationMarker));
+                if (!alreadyEscalated) {
+                  const mentionLine = criticalSlaEscalationMentions.length > 0
+                    ? `\n\ncc ${criticalSlaEscalationMentions.map((u) => `@${u}`).join(' ')}`
+                    : '';
+                  await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    body: `${criticalSlaEscalationMarker}\nSLA breach detected: this critical governance deviation has been open for ${ageDays} day(s) (threshold ${criticalSlaDays}).${mentionLine}`
+                  });
+                  criticalSlaEscalationComments += 1;
+                } else {
+                  criticalSlaEscalationSkipped += 1;
+                }
+              }
+            }
+
+            const releaseBlockedBySla = criticalBlockOnSlaBreach && criticalSlaBreached > 0;
+            const effectiveOverall = releaseBlockedBySla ? '⛔ BLOCKED by critical SLA breach' : overall;
+
+            const deviationRows = deviations.length === 0
+              ? '| none | none | none |\n'
+              : deviations.map((d) => `| ${d.severity} | ${d.item} | ${d.recommendation} |`).join('\n');
+
+            const criticalSlaRows = criticalSlaBreachedRows.length === 0
+              ? '| none | none | none |\n'
+              : criticalSlaBreachedRows.join('\n');
+
+            const planLines = prioritized.length === 0
+              ? '- [x] No action needed.'
+              : prioritized.map((d, idx) => `- [ ] P${idx + 1} (${d.severity.toUpperCase()}): ${d.recommendation}`).join('\n');
+
+            const body = `${marker}
+            <!-- policy-governance-score:${score} -->
+            <!-- policy-governance-history:${JSON.stringify(history)} -->
+            # Policy Governance Report
+
+            **Status:** ${effectiveOverall}
+            **Generated:** ${now}
+            **Governance score:** ${score}/100 (grade ${grade})
+            **Trend vs previous:** ${trend}
+
+            ## Governance score model
+            - Formula: $Score = \\max(0, 100 - Penalty)$
+            - Penalty:
+              - missing checks × ${weights.missingChecks}
+              - extra checks × ${weights.extraChecks}
+              - missing managed labels × ${weights.missingManagedLabels}
+              - label metadata drift × ${weights.labelMetadataDrift}
+
+            ## Required checks
+            - Expected: ${expectedChecks.length}
+            - In settings: ${settingsContexts.length}
+            - Missing: ${missingChecks.length === 0 ? 'none' : missingChecks.join(', ')}
+            - Extra: ${extraChecks.length === 0 ? 'none' : extraChecks.join(', ')}
+
+            ## Managed labels
+            - Expected managed labels: ${managed.length}
+            - Missing in labels.yml: ${missingManagedLabels.length === 0 ? 'none' : missingManagedLabels.join(', ')}
+            - Metadata drift: ${metadataDrift.length === 0 ? 'none' : metadataDrift.join(', ')}
+
+            ## Deviation classification
+            - Critical: ${grouped.critical}
+            - High: ${grouped.high}
+            - Medium: ${grouped.medium}
+            - Low: ${grouped.low}
+
+            | Severity | Item | Recommended fix |
+            |---|---|---|
+            ${deviationRows}
+
+            ## Prioritized action plan (top 3)
+            ${planLines}
+
+            ## Critical deviation issue automation
+            - Enabled: ${criticalEscalationEnabled ? 'yes' : 'no'}
+            - Auto-close resolved issues: ${criticalEscalationAutoClose ? 'yes' : 'no'}
+            - Critical deviations detected: ${criticalDeviations.length}
+            - Issues created: ${criticalCreated}
+            - Issues updated: ${criticalUpdated}
+            - Issues auto-closed: ${criticalClosed}
+            - Issues skipped: ${criticalSkipped}
+            - Escalation labels: ${criticalEscalationLabels.length === 0 ? 'none' : criticalEscalationLabels.join(', ')}
+            - Escalation assignees: ${criticalEscalationAssignees.length === 0 ? 'none' : criticalEscalationAssignees.join(', ')}
+
+            ## Critical SLA escalation
+            - SLA threshold (days): ${criticalSlaDays}
+            - Block on SLA breach: ${criticalBlockOnSlaBreach ? 'yes' : 'no'}
+            - Release blocked by SLA: ${releaseBlockedBySla ? 'yes' : 'no'}
+            - Breached critical issues: ${criticalSlaBreached}
+            - Label escalations applied: ${criticalSlaEscalatedLabels}
+            - Assignee escalations attempted: ${criticalSlaEscalatedAssignees}
+            - Escalation comments posted: ${criticalSlaEscalationComments}
+            - Escalation comments skipped (already escalated): ${criticalSlaEscalationSkipped}
+            - SLA escalation labels: ${criticalSlaEscalationLabels.length === 0 ? 'none' : criticalSlaEscalationLabels.join(', ')}
+            - SLA escalation assignees: ${criticalSlaEscalationAssignees.length === 0 ? 'none' : criticalSlaEscalationAssignees.join(', ')}
+            - SLA escalation mentions: ${criticalSlaEscalationMentions.length === 0 ? 'none' : criticalSlaEscalationMentions.map((u) => `@${u}`).join(', ')}
+
+            | Issue | Deviation | Age (days) |
+            |---|---|---:|
+            ${criticalSlaRows}
+
+            ## Score trend (latest ${trendWindow})
+            | Timestamp (UTC) | Score |
+            |---|---:|
+            ${trendRows}
+
+            ## Source of truth
+            - \.github/policy-matrix.json
+            - \.github/settings.yml
+            - \.github/labels.yml
+            `.replace(/^\s{12}/gm, '').trim();
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                title,
+                body
+              });
+              core.notice(`Updated governance report issue #${existing.number}.`);
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['workflows']
+              });
+              core.notice('Created governance report issue.');
+            }

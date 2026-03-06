@@ -1,0 +1,102 @@
+{
+  "prTitlePattern": "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\\(.+\\))?:\\s\\S.+$",
+  "branchNamePattern": "^(feat|fix|docs|chore|refactor|test|build|ci|perf|revert|hotfix)\\/[a-z0-9][a-z0-9._/-]*$",
+  "branchAllowedPrefixes": [
+    "dependabot/",
+    "renovate/",
+    "release/"
+  ],
+  "requiredPrSections": [
+    "## Summary",
+    "## Validation",
+    "## Deployment and Risk",
+    "## Database / Prisma",
+    "## Changelog"
+  ],
+  "userFacingPathPrefixes": [
+    "src/",
+    "apps/api/src/",
+    "apps/api/prisma/",
+    "infra/"
+  ],
+  "userFacingExactPaths": [
+    "azure.yaml"
+  ],
+  "changelogLabels": [
+    "changelog:required",
+    "changelog:skip"
+  ],
+  "requiredStatusChecks": [
+    "CI / validate",
+    "Policy Matrix Validate / Validate policy matrix structure",
+    "Policy Settings Alignment / Validate policy and settings alignment",
+    "Policy Labels Alignment / Validate policy labels alignment",
+    "Release Readiness Gate / Validate release readiness policy",
+    "PR Title Policy / Validate PR title",
+    "PR Body Policy / Validate PR body template compliance",
+    "Branch Name Policy / Validate branch naming convention",
+    "Changelog Policy / Enforce changelog labeling policy"
+  ],
+  "managedLabels": [
+    {
+      "name": "workflows",
+      "color": "FBCA04",
+      "description": "GitHub Actions and automation changes"
+    },
+    {
+      "name": "changelog:required",
+      "color": "BFD4F2",
+      "description": "User-facing change should be reflected in changelog/release notes"
+    },
+    {
+      "name": "changelog:skip",
+      "color": "EDEDED",
+      "description": "No changelog entry needed for this PR"
+    },
+    {
+      "name": "risk:accepted",
+      "color": "8A2BE2",
+      "description": "Explicitly accepted risk for large/high-impact change"
+    },
+    {
+      "name": "policy:needs-attention",
+      "color": "D93F0B",
+      "description": "PR violates one or more repository governance policies"
+    },
+    {
+      "name": "size/xl",
+      "color": "D93F0B",
+      "description": "Extra large PR (over ~800 changed lines)"
+    }
+  ],
+  "governanceScore": {
+    "weights": {
+      "missingChecks": 12,
+      "extraChecks": 8,
+      "missingManagedLabels": 10,
+      "labelMetadataDrift": 4
+    },
+    "trendWindow": 10
+  },
+  "governanceEscalation": {
+    "critical": {
+      "enabled": true,
+      "labels": [
+        "policy:needs-attention",
+        "workflows"
+      ],
+      "assignees": [],
+      "autoCloseResolved": true,
+      "slaDays": 7,
+      "escalationLabels": [
+        "risk:accepted"
+      ],
+      "escalationAssignees": [],
+      "escalationCommentMentions": [],
+      "blockOnSlaBreach": true
+    }
+  },
+  "sizeXlLabel": "size/xl",
+  "riskAcceptedLabel": "risk:accepted",
+  "policyNeedsAttentionLabel": "policy:needs-attention"
+}

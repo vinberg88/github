@@ -1,0 +1,39 @@
+name: Preview Web (Vercel)
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "apps/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/preview-vercel.yml"
+
+jobs:
+  deploy-preview:
+    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy preview to Vercel
+        uses: amondnet/vercel-action@v25
+        id: vercel
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vercel-args: "--yes"
+
+  preview-secrets-missing:
+    if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vercel preview skipped
+        run: echo "Vercel preview skipped. Configure VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID secrets to enable it."

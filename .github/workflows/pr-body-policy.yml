@@ -1,0 +1,38 @@
+name: PR Body Policy
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-pr-body:
+    name: Validate PR body template compliance
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required PR sections
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const body = context.payload.pull_request?.body || '';
+            const matrix = JSON.parse(fs.readFileSync('.github/policy-matrix.json', 'utf8'));
+            const requiredSections = matrix.requiredPrSections;
+
+            const missing = requiredSections.filter(section => !body.includes(section));
+
+            if (missing.length > 0) {
+              core.setFailed(
+                `Missing required PR body sections: ${missing.join(', ')}. Please use the PR template.`
+              );
+              return;
+            }
+
+            core.notice('PR body contains all required sections.');

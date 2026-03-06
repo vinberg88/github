@@ -1,0 +1,47 @@
+web:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**"
+
+api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/api/**"
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "infra/**"
+          - "azure.yaml"
+          - "Dockerfile.web"
+          - "apps/api/Dockerfile"
+
+workflows:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "SECURITY.md"
+          - "apps/api/src/lib/security.ts"
+          - "apps/api/src/plugins/security.ts"
+          - ".github/workflows/codeql.yml"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "README.md"
+          - "docs/**"
+          - "CONTRIBUTING.md"
+          - "SUPPORT.md"
+          - "CODE_OF_CONDUCT.md"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package.json"
+          - "package-lock.json"
+          - "apps/api/package.json"
+          - ".github/dependabot.yml"

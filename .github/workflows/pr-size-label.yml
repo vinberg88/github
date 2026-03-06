@@ -1,0 +1,33 @@
+name: PR Size Label
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  size-label:
+    name: Label PR size
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add size label
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: "size/xs"
+          xs_max_size: "20"
+          s_label: "size/s"
+          s_max_size: "100"
+          m_label: "size/m"
+          m_max_size: "300"
+          l_label: "size/l"
+          l_max_size: "800"
+          fail_if_xl: "false"
+          message_if_xl: "Stor PR upptäckt (size/xl). Överväg att dela upp i mindre PR:er för snabbare review."
+          files_to_ignore: |
+            package-lock.json
+            **/*.svg
+            **/*.ico

@@ -1,0 +1,47 @@
+{
+  "name": "work-azure",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "next dev",
+    "dev:api": "npm run dev --workspace @app/api",
+    "build": "npm run prisma:generate && npm run build:web && npm run build:api",
+    "build:web": "next build",
+    "build:api": "npm run build --workspace @app/api",
+    "start": "next start",
+    "lint": "npm run lint:web && npm run lint:api",
+    "lint:staged": "lint-staged",
+    "lint:web": "eslint",
+    "lint:api": "tsc --project apps/api/tsconfig.json --noEmit",
+    "prisma:generate": "npm run prisma:generate --workspace @app/api",
+    "prisma:seed": "npm run prisma:seed --workspace @app/api",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "eslint --max-warnings=0"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.3",
+    "@commitlint/config-conventional": "^20.4.3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

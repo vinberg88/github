@@ -1,0 +1,56 @@
+name: Reusable Azure Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment-name:
+        required: true
+        type: string
+      location:
+        required: true
+        type: string
+      branch-ref:
+        required: false
+        type: string
+        default: "main"
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch-ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Azure Developer CLI
+        uses: Azure/setup-azd@v1.0.0
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Provision + Deploy
+        env:
+          AZURE_ENV_NAME: ${{ inputs.environment-name }}
+          AZURE_LOCATION: ${{ inputs.location }}
+        run: |
+          azd env new "$AZURE_ENV_NAME" --location "$AZURE_LOCATION" || azd env select "$AZURE_ENV_NAME"
+          azd up --no-prompt

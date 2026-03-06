@@ -1,0 +1,75 @@
+- name: web
+  color: "0E8A16"
+  description: Changes related to frontend/web
+
+- name: api
+  color: "1D76DB"
+  description: Changes related to backend API
+
+- name: infra
+  color: "5319E7"
+  description: Infrastructure and deployment changes
+
+- name: workflows
+  color: "FBCA04"
+  description: GitHub Actions and automation changes
+
+- name: docs
+  color: "0075CA"
+  description: Documentation updates
+
+- name: security
+  color: "B60205"
+  description: Security related changes
+
+- name: dependencies
+  color: "0366D6"
+  description: Dependency updates
+
+- name: size/xs
+  color: "C2E0C6"
+  description: Very small PR (up to ~20 changed lines)
+
+- name: size/s
+  color: "7BC96F"
+  description: Small PR (up to ~100 changed lines)
+
+- name: size/m
+  color: "FBCA04"
+  description: Medium PR (up to ~300 changed lines)
+
+- name: size/l
+  color: "F9D0C4"
+  description: Large PR (up to ~800 changed lines)
+
+- name: size/xl
+  color: "D93F0B"
+  description: Extra large PR (over ~800 changed lines)
+
+- name: ready-for-review
+  color: "0E8A16"
+  description: PR is ready for review
+
+- name: changelog:required
+  color: "BFD4F2"
+  description: User-facing change should be reflected in changelog/release notes
+
+- name: changelog:skip
+  color: "EDEDED"
+  description: No changelog entry needed for this PR
+
+- name: risk:accepted
+  color: "8A2BE2"
+  description: Explicitly accepted risk for large/high-impact change
+
+- name: policy:needs-attention
+  color: "D93F0B"
+  description: PR violates one or more repository governance policies
+
+- name: stale
+  color: "CCCCCC"
+  description: Marked stale due to inactivity
+
+- name: pinned
+  color: "0052CC"
+  description: Exempt from stale automation

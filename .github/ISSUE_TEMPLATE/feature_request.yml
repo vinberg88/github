@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for the idea! Help us evaluate impact and implementation scope."
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user/business problem are we solving?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches?
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Expected impact
+      options:
+        - low
+        - medium
+        - high
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - web
+        - api
+        - infra
+        - workflows
+        - docs
+    validations:
+      required: true

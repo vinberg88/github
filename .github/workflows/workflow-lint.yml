@@ -1,0 +1,28 @@
+name: Workflow Lint
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/labeler.yml"
+      - ".github/labels.yml"
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/workflows/**"
+      - ".github/labeler.yml"
+      - ".github/labels.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Lint GitHub workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run actionlint
+        uses: rhysd/actionlint@v1

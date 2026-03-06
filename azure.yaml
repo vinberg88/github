@@ -1,0 +1,23 @@
+name: work-azure
+metadata:
+  template: work-azure@0.0.1
+
+services:
+  web:
+    project: .
+    host: containerapp
+    language: ts
+    docker:
+      path: Dockerfile.web
+      context: .
+  api:
+    project: apps/api
+    host: containerapp
+    language: ts
+    docker:
+      path: Dockerfile
+      context: .
+
+infra:
+  provider: bicep
+  path: infra

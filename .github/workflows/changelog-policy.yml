@@ -1,0 +1,64 @@
+name: Changelog Policy
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  changelog-policy:
+    name: Enforce changelog labeling policy
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate changelog labels for user-facing changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+            const matrix = JSON.parse(fs.readFileSync('.github/policy-matrix.json', 'utf8'));
+
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number, per_page: 100 }
+            );
+
+            const changed = files.map(f => f.filename);
+            const userFacing = changed.some((path) =>
+              matrix.userFacingPathPrefixes.some((prefix) => path.startsWith(prefix)) ||
+              matrix.userFacingExactPaths.includes(path)
+            );
+
+            if (!userFacing) {
+              core.notice('No user-facing files changed; changelog labels not required.');
+              return;
+            }
+
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
+            const requiredLabel = matrix.changelogLabels[0];
+            const hasDecisionLabel = matrix.changelogLabels.some((label) => labels.includes(label));
+
+            if (hasDecisionLabel) {
+              core.notice('Changelog decision label is present.');
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: pull_number,
+              labels: [requiredLabel]
+            });
+
+            core.setFailed(
+              `Missing changelog decision label. Added '${requiredLabel}'. If not needed, use one of: ${matrix.changelogLabels.join(', ')}.`
+            );
