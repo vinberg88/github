@@ -754,6 +754,7 @@ function hashOpaqueToken(token) {
 }
 
 // src/routes/auth.ts
+import rateLimit2 from "@fastify/rate-limit";
 var registerSchema = z5.object({
   email: z5.string().email(),
   fullName: z5.string().min(2).max(120),
@@ -803,6 +804,9 @@ function userView(member) {
   };
 }
 var authRoutes = async (app2) => {
+  await app2.register(rateLimit2, {
+    global: false
+  });
   app2.post("/auth/register", { preHandler: app2.requireRole(["owner", "admin", "manager"]) }, async (request, reply) => {
     const parsed = registerSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -1075,37 +1079,49 @@ var authRoutes = async (app2) => {
       }
     });
   });
-  app2.post("/auth/change-password", { preHandler: app2.authenticate }, async (request, reply) => {
-    const parsed = updatePasswordSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return invalidPayload4(reply, parsed.error.issues);
-    }
-    const member = await prisma.member.findUnique({
-      where: { id: request.user.sub },
-      select: { id: true, passwordHash: true }
-    });
-    if (!member?.passwordHash) {
-      return reply.code(401).send({ message: "Invalid credentials" });
-    }
-    const valid = verifyPassword(parsed.data.currentPassword, member.passwordHash);
-    if (!valid) {
-      return reply.code(401).send({ message: "Invalid credentials" });
-    }
-    await prisma.member.update({
-      where: { id: member.id },
-      data: { passwordHash: hashPassword(parsed.data.newPassword) }
-    });
-    await prisma.refreshToken.updateMany({
-      where: {
-        memberId: member.id,
-        revokedAt: null
-      },
-      data: {
-        revokedAt: /* @__PURE__ */ new Date()
+  app2.post(
+    "/auth/change-password",
+    {
+      preHandler: app2.authenticate,
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "1 minute"
+        }
       }
-    });
-    return { status: "ok" };
-  });
+    },
+    async (request, reply) => {
+      const parsed = updatePasswordSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return invalidPayload4(reply, parsed.error.issues);
+      }
+      const member = await prisma.member.findUnique({
+        where: { id: request.user.sub },
+        select: { id: true, passwordHash: true }
+      });
+      if (!member?.passwordHash) {
+        return reply.code(401).send({ message: "Invalid credentials" });
+      }
+      const valid = verifyPassword(parsed.data.currentPassword, member.passwordHash);
+      if (!valid) {
+        return reply.code(401).send({ message: "Invalid credentials" });
+      }
+      await prisma.member.update({
+        where: { id: member.id },
+        data: { passwordHash: hashPassword(parsed.data.newPassword) }
+      });
+      await prisma.refreshToken.updateMany({
+        where: {
+          memberId: member.id,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: /* @__PURE__ */ new Date()
+        }
+      });
+      return { status: "ok" };
+    }
+  );
 };
 
 // src/routes/admin.ts
