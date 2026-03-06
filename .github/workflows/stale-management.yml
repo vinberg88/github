@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Process stale issues and PRs
-        uses: actions/stale@v9
+        uses: actions/stale@v10
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           stale-issue-message: "Den här issue:n har varit inaktiv i 30 dagar och markeras som stale. Kommentera för att hålla den öppen."
