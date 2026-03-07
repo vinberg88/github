@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --panel: rgba(15, 23, 42, 0.72);
 }
 
 @theme inline {
@@ -12,15 +13,37 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-theme="light"] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --panel: rgba(255, 255, 255, 0.82);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+.glass-panel {
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+}
+
+.animated-orb {
+  animation: orb-float 16s ease-in-out infinite;
+}
+
+.animated-orb-delay {
+  animation: orb-float 20s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+@keyframes orb-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) scale(1.04);
+  }
 }
