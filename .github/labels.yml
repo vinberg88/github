@@ -74,17 +74,17 @@
   color: "0052CC"
   description: Exempt from stale automation
 
-- name: performance
+- name: "performance"
   color: "FF9500"
-  description: Performance improvement or regression fix
+  description: "Performance improvement or regression fix"
 
-- name: database
+- name: "database"
   color: "6B3A2A"
-  description: Database schema, migration or query change
+  description: "Database schema, migration or query change"
 
-- name: breaking-change
+- name: "breaking-change"
   color: "B60205"
-  description: Introduces a breaking API or interface change
+  description: "Introduces a breaking API or interface change"
 
 - name: needs-triage
   color: "CCCCCC"
