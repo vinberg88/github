@@ -9,6 +9,7 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "next dev",
     "dev:api": "npm run dev --workspace @app/api",
+    "test": "npm run --workspaces --if-present test",
     "build": "npm run prisma:generate && npm run build:web && npm run build:api",
     "build:web": "next build",
     "build:api": "npm run build --workspace @app/api",
@@ -25,6 +26,7 @@
     "*.{js,jsx,ts,tsx,mjs,cjs}": "eslint --max-warnings=0"
   },
   "dependencies": {
+    "geist": "^1.7.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -37,7 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^9.2.1",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.1.6",
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2",
