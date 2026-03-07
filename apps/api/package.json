@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
     "build": "tsup src/index.ts --format esm --target node20 --out-dir dist",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
@@ -12,19 +13,23 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@fastify/jwt": "^9.1.0",
-    "@fastify/rate-limit": "^10.3.0",
     "@fastify/cors": "^11.1.0",
-    "@prisma/client": "^6.7.0",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
     "fastify": "^5.3.3",
     "fastify-plugin": "^5.0.1",
     "ioredis": "^5.7.0",
-    "zod": "^3.25.7"
+    "pg": "^8.20.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "prisma": "^6.7.0",
+    "@types/pg": "^8.18.0",
+    "prisma": "^7.4.2",
     "tsup": "^8.5.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.18"
   }
 }
