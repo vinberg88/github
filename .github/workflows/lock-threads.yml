@@ -1,0 +1,25 @@
+name: Lock Resolved Threads
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  lock:
+    name: Lock closed issues and PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lock resolved threads
+        uses: dessant/lock-threads@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-inactive-days: "7"
+          pr-inactive-days: "7"
+          issue-lock-reason: "resolved"
+          pr-lock-reason: "resolved"
+          log-output: true

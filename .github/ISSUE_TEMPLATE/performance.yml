@@ -1,0 +1,58 @@
+name: Performance report
+description: Report a performance regression or degraded user experience
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: "Help us identify and fix performance issues. Include metrics where possible."
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is slow, bloated, or getting worse?
+      placeholder: Clear and concise description of the performance issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Baseline vs actual metrics
+      description: Include latency, bundle size, memory, DB query time, etc.
+      placeholder: |
+        Before: ~200 ms
+        After:  ~1200 ms
+        Target: <300 ms
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Call GET /api/tasks with 1000 items
+        2. Observe response time in DevTools
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - web – bundle size
+        - web – runtime rendering
+        - api – response latency
+        - api – database query
+        - api – memory usage
+        - infra – cold start / deployment
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit / branch
+      placeholder: "e.g. main @ abc1234"

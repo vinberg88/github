@@ -4,7 +4,22 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 15
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      next:
+        patterns:
+          - "next"
+          - "@next/*"
+          - "eslint-config-next"
+      typescript-tooling:
+        patterns:
+          - "typescript"
+          - "@types/*"
     commit-message:
       prefix: "deps"
 
@@ -12,7 +27,17 @@ updates:
     directory: "/apps/api"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 15
+    groups:
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+      fastify:
+        patterns:
+          - "fastify"
+          - "@fastify/*"
+          - "fastify-plugin"
     commit-message:
       prefix: "deps-api"
 

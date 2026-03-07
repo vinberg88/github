@@ -29,6 +29,17 @@ security:
           - "apps/api/src/plugins/security.ts"
           - ".github/workflows/codeql.yml"
 
+database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/api/prisma/**"
+
+performance:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/api/vitest.config.ts"
+          - "next.config.ts"
+
 docs:
   - changed-files:
       - any-glob-to-any-file:

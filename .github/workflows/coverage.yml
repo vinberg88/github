@@ -1,0 +1,62 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Generate coverage report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Run tests with coverage
+        run: npm run test:coverage --workspace @app/api
+
+      - name: Write coverage summary
+        if: always()
+        run: |
+          if [ -f apps/api/coverage/coverage-summary.json ]; then
+            echo "## API Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const data = JSON.parse(require('fs').readFileSync('apps/api/coverage/coverage-summary.json','utf8'));
+              const t = data.total;
+              const row = (label, m) => \`| \${label} | \${m.pct.toFixed(1)}% | \${m.covered}/\${m.total} |\`;
+              const lines = [
+                '| Metric | Coverage | Covered/Total |',
+                '|:-------|:--------:|:-------------:|',
+                row('Statements', t.statements),
+                row('Lines',      t.lines),
+                row('Functions',  t.functions),
+                row('Branches',   t.branches),
+              ];
+              console.log(lines.join('\n'));
+            " >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: apps/api/coverage/
+          retention-days: 14

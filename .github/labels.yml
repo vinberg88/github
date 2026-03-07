@@ -73,3 +73,23 @@
 - name: pinned
   color: "0052CC"
   description: Exempt from stale automation
+
+- name: performance
+  color: "FF9500"
+  description: Performance improvement or regression fix
+
+- name: database
+  color: "6B3A2A"
+  description: Database schema, migration or query change
+
+- name: breaking-change
+  color: "B60205"
+  description: Introduces a breaking API or interface change
+
+- name: needs-triage
+  color: "CCCCCC"
+  description: Awaiting triage and classification
+
+- name: good-first-issue
+  color: "7057FF"
+  description: Good entry point for new contributors

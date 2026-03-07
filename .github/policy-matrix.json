@@ -35,7 +35,9 @@
     "PR Title Policy / Validate PR title",
     "PR Body Policy / Validate PR body template compliance",
     "Branch Name Policy / Validate branch naming convention",
-    "Changelog Policy / Enforce changelog labeling policy"
+    "Changelog Policy / Enforce changelog labeling policy",
+    "Commit Lint / Lint commit messages",
+    "Dependency Review / Scan for vulnerable dependencies"
   ],
   "managedLabels": [
     {
@@ -67,6 +69,21 @@
       "name": "size/xl",
       "color": "D93F0B",
       "description": "Extra large PR (over ~800 changed lines)"
+    },
+    {
+      "name": "performance",
+      "color": "FF9500",
+      "description": "Performance improvement or regression fix"
+    },
+    {
+      "name": "database",
+      "color": "6B3A2A",
+      "description": "Database schema, migration or query change"
+    },
+    {
+      "name": "breaking-change",
+      "color": "B60205",
+      "description": "Introduces a breaking API or interface change"
     }
   ],
   "governanceScore": {
