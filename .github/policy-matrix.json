@@ -1,5 +1,5 @@
 {
-  "prTitlePattern": "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\\(.+\\))?:\\s\\S.+$",
+  "prTitlePattern": "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|deps|deps-api)(\\(.+\\))?:\\s\\S.+$",
   "branchNamePattern": "^(feat|fix|docs|chore|refactor|test|build|ci|perf|revert|hotfix)\\/[a-z0-9][a-z0-9._/-]*$",
   "branchAllowedPrefixes": [
     "dependabot/",
