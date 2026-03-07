@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/vinberg88/github/compare/v1.0.0...v1.0.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* **api:** remove invalid engine field from prisma.config.ts ([9448dab](https://github.com/vinberg88/github/commit/9448dab2004dc75a56faeb7d913f548ea08cb2b6))
+
 ## 1.0.0 (2026-03-07)
 
 
