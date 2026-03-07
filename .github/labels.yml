@@ -10,9 +10,9 @@
   color: "5319E7"
   description: Infrastructure and deployment changes
 
-- name: workflows
+- name: "workflows"
   color: "FBCA04"
-  description: GitHub Actions and automation changes
+  description: "GitHub Actions and automation changes"
 
 - name: docs
   color: "0075CA"
@@ -42,29 +42,29 @@
   color: "F9D0C4"
   description: Large PR (up to ~800 changed lines)
 
-- name: size/xl
+- name: "size/xl"
   color: "D93F0B"
-  description: Extra large PR (over ~800 changed lines)
+  description: "Extra large PR (over ~800 changed lines)"
 
 - name: ready-for-review
   color: "0E8A16"
   description: PR is ready for review
 
-- name: changelog:required
+- name: "changelog:required"
   color: "BFD4F2"
-  description: User-facing change should be reflected in changelog/release notes
+  description: "User-facing change should be reflected in changelog/release notes"
 
-- name: changelog:skip
+- name: "changelog:skip"
   color: "EDEDED"
-  description: No changelog entry needed for this PR
+  description: "No changelog entry needed for this PR"
 
-- name: risk:accepted
+- name: "risk:accepted"
   color: "8A2BE2"
-  description: Explicitly accepted risk for large/high-impact change
+  description: "Explicitly accepted risk for large/high-impact change"
 
-- name: policy:needs-attention
+- name: "policy:needs-attention"
   color: "D93F0B"
-  description: PR violates one or more repository governance policies
+  description: "PR violates one or more repository governance policies"
 
 - name: stale
   color: "CCCCCC"

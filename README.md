@@ -2,6 +2,22 @@
 
 Detta repo innehåller en produktionsinriktad grund för en större app som körs via Azure och GitHub.
 
+Här är en praktisk och modern översikt över hur du bygger och distribuerar appar till Azure med GitHub 
+som huvudsaklig källa och verktyg. Det finns idag flera väldigt smidiga sätt att göra detta – valet
+beror på vilken typ av app du bygger. 
+
+Azure DevOps och GitHub integreras väldigt bra idag särskilt om du vill behålla Azure Boards planering,
+backlog, sprintar) och/eller Azure Pipelines (CI/CD) medan koden bor på GitHub. Microsoft satsar hårt på
+hybrid-scenariot: GitHub som primär repo-plattform (med Copilot, Actions, etc.) + Azure DevOps som
+styrning och orkestrering.
+
+----
+
+![github2](https://github.com/user-attachments/assets/510c7583-bdc8-4a45-ba86-2b644b5750a5)
+
+----
+
+
 ## Arkitektur
 
 - **Frontend:** Next.js 16 (TypeScript, App Router, Tailwind)
