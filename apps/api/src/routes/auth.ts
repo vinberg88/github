@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { generateOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from "../lib/security.js";
+import rateLimit from "@fastify/rate-limit";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -70,6 +71,9 @@ function userView(member: {
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
+  await app.register(rateLimit, {
+    global: false
+  });
   app.post("/auth/register", { preHandler: app.requireRole(["owner", "admin", "manager"]) }, async (request, reply) => {
     const parsed = registerSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -383,11 +387,22 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     });
   });
 
-  app.post("/auth/change-password", { preHandler: app.authenticate }, async (request, reply) => {
-    const parsed = updatePasswordSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return invalidPayload(reply, parsed.error.issues);
-    }
+  app.post(
+    "/auth/change-password",
+    {
+      preHandler: app.authenticate,
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsed = updatePasswordSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return invalidPayload(reply, parsed.error.issues);
+      }
 
     const member = await prisma.member.findUnique({
       where: { id: request.user.sub },
