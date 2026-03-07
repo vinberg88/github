@@ -32,7 +32,7 @@ jobs:
         run: docker build -t trivy-scan-web:latest -f Dockerfile.web .
 
       - name: Run Trivy on web image
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: trivy-scan-web:latest
           format: sarif
@@ -59,7 +59,7 @@ jobs:
         run: docker build -t trivy-scan-api:latest -f apps/api/Dockerfile apps/api
 
       - name: Run Trivy on API image
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: trivy-scan-api:latest
           format: sarif
