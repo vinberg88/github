@@ -1,4 +1,4 @@
-// src/index.ts
+// src/app.ts
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 
@@ -1162,20 +1162,28 @@ var adminRoutes = async (app2) => {
   });
 };
 
+// src/app.ts
+async function createApp(options = {}) {
+  const app2 = Fastify({ logger: options.logger ?? true });
+  await app2.register(cors, {
+    origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"]
+  });
+  await app2.register(security_default);
+  await app2.register(healthRoutes, { prefix: "/v1" });
+  if (options.registerDomainRoutes ?? true) {
+    await app2.register(authRoutes, { prefix: "/v1" });
+    await app2.register(projectRoutes, { prefix: "/v1" });
+    await app2.register(organizationRoutes, { prefix: "/v1" });
+    await app2.register(taskRoutes, { prefix: "/v1" });
+    await app2.register(analyticsRoutes, { prefix: "/v1" });
+    await app2.register(eventRoutes, { prefix: "/v1" });
+    await app2.register(adminRoutes, { prefix: "/v1" });
+  }
+  return app2;
+}
+
 // src/index.ts
-var app = Fastify({ logger: true });
-await app.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"]
-});
-await app.register(security_default);
-await app.register(healthRoutes, { prefix: "/v1" });
-await app.register(authRoutes, { prefix: "/v1" });
-await app.register(projectRoutes, { prefix: "/v1" });
-await app.register(organizationRoutes, { prefix: "/v1" });
-await app.register(taskRoutes, { prefix: "/v1" });
-await app.register(analyticsRoutes, { prefix: "/v1" });
-await app.register(eventRoutes, { prefix: "/v1" });
-await app.register(adminRoutes, { prefix: "/v1" });
+var app = await createApp();
 var port = Number(process.env.API_PORT ?? 4e3);
 var host = process.env.API_HOST ?? "0.0.0.0";
 try {

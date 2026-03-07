@@ -9,6 +9,7 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "next dev",
     "dev:api": "npm run dev --workspace @app/api",
+    "test": "npm run --workspaces --if-present test",
     "build": "npm run prisma:generate && npm run build:web && npm run build:api",
     "build:web": "next build",
     "build:api": "npm run build --workspace @app/api",
