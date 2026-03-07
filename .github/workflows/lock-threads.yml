@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Lock resolved threads
-        uses: dessant/lock-threads@v5
+        uses: dessant/lock-threads@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           issue-inactive-days: "7"
