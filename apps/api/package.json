@@ -16,7 +16,7 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^9.1.0",
     "@fastify/rate-limit": "^10.3.0",
-    "@prisma/client": "^6.7.0",
+    "@prisma/client": "^7.4.2",
     "fastify": "^5.3.3",
     "fastify-plugin": "^5.0.1",
     "ioredis": "^5.7.0",
