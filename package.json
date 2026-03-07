@@ -23,7 +23,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,mjs,cjs}": "eslint --max-warnings=0"
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "eslint --max-warnings=0 --no-warn-ignored"
   },
   "dependencies": {
     "geist": "^1.7.0",
