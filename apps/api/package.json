@@ -19,7 +19,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
-    "fastify": "^5.3.3",
+    "fastify": "^5.8.2",
     "fastify-plugin": "^5.0.1",
     "ioredis": "^5.7.0",
     "pg": "^8.20.0",
