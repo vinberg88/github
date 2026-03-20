@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0.23.1
+        uses: anchore/sbom-action@v0.24.0
         with:
           format: spdx-json
           artifact-name: sbom-${{ needs.release-please.outputs.tag_name }}.spdx.json
