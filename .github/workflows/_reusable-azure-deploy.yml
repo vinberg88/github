@@ -43,7 +43,7 @@ jobs:
         uses: Azure/setup-azd@v2.2.1
 
       - name: Azure login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
