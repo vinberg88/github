@@ -32,7 +32,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.24.0
