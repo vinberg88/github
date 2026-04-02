@@ -41,6 +41,7 @@ styrning och orkestrering.
 
 - `src/` — Next.js-webapp
 - `apps/api/` — Fastify API + Prisma
+- `apps/agents/` — Multi-agent workflow (Python Agent Framework SDK)
 - `infra/` — Azure-infrastruktur (Bicep)
 - `.github/workflows/` — CI/CD pipelines
 - `.github/policy-matrix.json` — central policykälla för governance-regler
@@ -261,6 +262,25 @@ Konkreta steg för miljöskydd (required reviewers) finns i:
 Settings-as-code notis:
 
 - `.github/settings.yml` används av t.ex. Probot Settings app eller GH CLI-script för att synka branch protection/repoinställningar.
+
+## Multi-agent workflow (Python)
+
+`apps/agents/` innehåller en Writer-Reviewer multi-agent workflow byggd med [Microsoft Agent Framework SDK](https://github.com/microsoft/agent-framework) och [Azure AI AgentServer SDK](https://pypi.org/project/azure-ai-agentserver-agentframework/).
+
+- **Writer** — skriver och reviderar innehåll baserat på användarens brief och feedback.
+- **Reviewer** — utvärderar utkastet mot klarhet, noggrannhet, ton och struktur och ger konkret återkoppling tills utkastet godkänns.
+
+### Rekommenderade modeller
+
+| Modell | Passar bäst för |
+|---|---|
+| `gpt-4.1-mini` | Standard — snabb och kostnadseffektiv |
+| `gpt-4.1` | Längre, mer komplexa texter |
+| `gpt-4o` | Balanserad hastighet och kvalitet |
+| `gpt-4.1-nano` | Stora volymer, enklare innehåll |
+| `o3-mini` | Djupare, mer kritisk granskning |
+
+Se [`apps/agents/README.md`](apps/agents/README.md) för setup-instruktioner och deployment till Microsoft Foundry.
 
 ## Nästa steg
 
