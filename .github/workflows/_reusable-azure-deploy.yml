@@ -40,7 +40,7 @@ jobs:
         run: npm ci
 
       - name: Install Azure Developer CLI
-        uses: Azure/setup-azd@v2.2.1
+        uses: Azure/setup-azd@v2.3.0
 
       - name: Azure login
         uses: azure/login@v3
