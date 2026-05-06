@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/ContainerAgent.yaml
+
+kind: hosted
+name: writer-reviewer-agents-in-workflow
+description: >
+  A multi-agent workflow where a Writer and a Reviewer collaborate to draft
+  and iteratively refine content until it meets quality criteria.
+metadata:
+  authors:
+    - vinberg88
+  tags:
+    - Azure AI AgentServer
+    - Microsoft Agent Framework
+    - Multi-Agent Workflow
+    - Writer-Reviewer
+    - Content Creation
+protocols:
+  - protocol: responses
+    version: v1
+environment_variables:
+  - name: FOUNDRY_PROJECT_ENDPOINT
+    value: ${FOUNDRY_PROJECT_ENDPOINT}
+  - name: FOUNDRY_MODEL
+    value: ${FOUNDRY_MODEL}
