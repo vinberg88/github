@@ -18,6 +18,10 @@ FOUNDRY_PROJECT_ENDPOINT = os.getenv(
     "FOUNDRY_PROJECT_ENDPOINT"
 )  # e.g., "https://<project>.services.ai.azure.com/api/projects/<project-name>"
 
+if not FOUNDRY_PROJECT_ENDPOINT or not FOUNDRY_PROJECT_ENDPOINT.strip():
+    raise RuntimeError(
+        "FOUNDRY_PROJECT_ENDPOINT environment variable is required and must be a non-empty URL."
+    )
 # Model recommendations (set FOUNDRY_MODEL in .env to override):
 #   gpt-4.1-mini  — default; fast and cost-effective for most drafts
 #   gpt-4.1       — higher quality; better reasoning and nuanced edits
