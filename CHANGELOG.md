@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/vinberg88/github/compare/v1.0.1...v1.1.0) (2026-07-25)
+
+
+### Features
+
+* **agents:** add Writer-Reviewer multi-agent workflow app with model recommendations ([#86](https://github.com/vinberg88/github/issues/86)) ([9e22040](https://github.com/vinberg88/github/commit/9e220401ac1304934a60b3d1d3926f8cfc45e47e))
+
 ## [1.0.1](https://github.com/vinberg88/github/compare/v1.0.0...v1.0.1) (2026-03-07)
 
 
