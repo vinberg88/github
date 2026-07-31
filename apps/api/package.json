@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
-    "@fastify/jwt": "^10.2.0",
+    "@fastify/jwt": "^10.2.1",
     "@fastify/rate-limit": "^10.3.0",
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
