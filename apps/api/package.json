@@ -22,11 +22,11 @@
     "fastify": "^5.11.2",
     "fastify-plugin": "^5.0.1",
     "ioredis": "^5.11.1",
-    "pg": "^8.22.0",
+    "pg": "^8.23.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0",
+    "@types/pg": "^8.21.0",
     "@vitest/coverage-v8": "^4.1.10",
     "prisma": "^7.9.1",
     "tsup": "^8.5.0",
